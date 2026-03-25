@@ -1,1 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Env
 .env
+
+# Data
+data/
+chroma_data/
+
+# Docker
+*.log
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
