@@ -6,11 +6,11 @@ Projekt został zbudowany jako **praktyczny projekt DevOps + AI** — działa w 
 
 ---
 
-# 🚀 Co potrafi aplikacja?
-✅ Wrzucanie plików **PDF** i analiza ich zawartości
-✅ Zadawanie pytań do zapisanych danych
-✅ Odpowiedzi generowane przez AI na podstawie kontekstu
-✅ Wyszukiwanie semantyczne (embeddingi)
+# Co potrafi aplikacja?
+ Wrzucanie plików **PDF** i analiza ich zawartości
+ Zadawanie pytań do zapisanych danych
+ Odpowiedzi generowane przez AI na podstawie kontekstu
+ Wyszukiwanie semantyczne (embeddingi)
 
 ---
 
@@ -28,7 +28,7 @@ To podejście to RAG (Retrieval-Augmented Generation)
 
 ---
 
-# 🧱 Architektura
+# Architektura
 
 ```text
 Frontend (HTML + JS)
