@@ -4,7 +4,7 @@ from pypdf import PdfReader
 
 import os
 
-client = OpenAI(api_key=os.getenv(""))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 chroma_client = chromadb.Client(
     settings=chromadb.config.Settings(
