@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Knowledge Base - Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>AI Knowledge Base</h1>
+
+    <!-- PDF Upload -->
+    <input type="file" id="fileInput" multiple />
+    <button onclick="uploadFiles()">Upload PDFs</button>
+    <span id="loader" style="display:none;">⌛</span>
+
+    <!-- Chat container -->
+    <div id="chat-container"></div>
+
+    <!-- Input -->
+    <div id="input-container">
+        <input type="text" id="question" placeholder="Wpisz pytanie...">
+        <button onclick="askQuestion()">Ask</button>
+    </div>
+
+    <script>
+        const API_URL = "/api";
+        const chatContainer = document.getElementById("chat-container");
+        const loader = document.getElementById("loader");
+
+        function addMessage(text, className) {
+            const msgDiv = document.createElement("div");
+            msgDiv.className = "message " + className;
+            msgDiv.innerText = text;
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function uploadFiles() {
+            const files = document.getElementById("fileInput").files;
+            if(!files.length) return alert("Wybierz plik!");
+
+            loader.style.display = "inline";
+            const formData = new FormData();
+            for (let file of files) formData.append("files", file);
+
+            try {
+                const res = await fetch(`${API_URL}/upload_pdfs`, { method: "POST", body: formData });
+                const data = await res.json();
+                alert(`Uploaded: ${data.added.join(", ")}`);
+            } catch (err) {
+                alert("Błąd uploadu: " + err);
+            } finally {
+                loader.style.display = "none";
+            }
+        }
+
+        async function askQuestion() {
+            const question = document.getElementById("question").value.trim();
+            if(!question) return;
+
+            addMessage(question, "user-msg");
+            document.getElementById("question").value = "";
+            loader.style.display = "inline";
+
+            try {
+                const res = await fetch(`${API_URL}/ask`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ question })
+                });
+                const data = await res.json();
+                addMessage(data.answer || "Brak odpowiedzi", "ai-msg");
+            } catch (err) {
+                addMessage("Błąd: " + err, "ai-msg");
+            } finally {
+                loader.style.display = "none";
+            }
+        }
+    </script>
+</body>
+</html>

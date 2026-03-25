@@ -1,0 +1,1 @@
+Terraform import służy do zaimportowania istniejących zasobów

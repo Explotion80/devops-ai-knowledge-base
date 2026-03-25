@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    container_name: ai-kb-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./data:/app/data   # 🔥 ważne dla PDF i knowledge
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
