@@ -1,5 +1,5 @@
 import chromadb
-from openai import OpenAI
+from openai import OpenAI, APIConnectionError, RateLimitError, APIStatusError
 from pypdf import PdfReader
 
 import os
@@ -38,22 +38,29 @@ def ask_knowledge(question: str):
 
     context = " ".join(documents[0])
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "Odpowiadaj WYŁĄCZNIE na podstawie kontekstu. "
-                    "Jeśli nie jesteś pewien, napisz: 'Nie ma tego w bazie wiedzy'."
-                )
-            },
-            {
-                "role": "user",
-                "content": f"Kontekst:\n{context}\n\nPytanie:\n{question}"
-            }
-        ]
-    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Odpowiadaj WYŁĄCZNIE na podstawie kontekstu. "
+                        "Jeśli nie jesteś pewien, napisz: 'Nie ma tego w bazie wiedzy'."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": f"Kontekst:\n{context}\n\nPytanie:\n{question}"
+                }
+            ]
+        )
+    except APIConnectionError:
+        raise RuntimeError("Cannot connect to OpenAI API")
+    except RateLimitError:
+        raise RuntimeError("OpenAI API rate limit exceeded, try again later")
+    except APIStatusError as e:
+        raise RuntimeError(f"OpenAI API error: {e.status_code} {e.message}")
 
     return response.choices[0].message.content
 

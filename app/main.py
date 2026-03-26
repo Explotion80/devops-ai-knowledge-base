@@ -1,9 +1,21 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, field_validator
 from typing import List
 import os
 import shutil
 from app.rag import add_to_knowledge, ask_knowledge, load_pdf
+
+
+class AskRequest(BaseModel):
+    question: str
+
+    @field_validator("question")
+    @classmethod
+    def question_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("question must not be empty")
+        return v.strip()
 
 app = FastAPI()
 
@@ -58,9 +70,10 @@ def list_documents():
     except Exception as e:
         return {"error": str(e)}
 
-# 🔹 ASK
 @app.post("/ask")
-def ask_question(data: dict):
-    question = data.get("question")
-    answer = ask_knowledge(question)
+def ask_question(data: AskRequest):
+    try:
+        answer = ask_knowledge(data.question)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI service error: {e}")
     return {"answer": answer}
