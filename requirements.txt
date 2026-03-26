@@ -3,4 +3,5 @@ uvicorn
 chromadb
 openai
 pypdf
+python-dotenv
 python-multipart

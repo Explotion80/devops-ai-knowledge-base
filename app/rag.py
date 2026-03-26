@@ -1,10 +1,12 @@
 import hashlib
+import os
 
 import chromadb
+from dotenv import load_dotenv
 from openai import OpenAI, APIConnectionError, RateLimitError, APIStatusError
 from pypdf import PdfReader
 
-import os
+load_dotenv(override=True)
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -41,12 +43,14 @@ def ask_knowledge(question: str):
     )
 
     documents = results.get("documents", [])
-    # distances = results.get("distances", [])
 
     if not documents or not documents[0]:
         return "Brak danych w bazie"
 
-    context = " ".join(documents[0])
+    context = "\n\n---\n\n".join(documents[0])
+    # Limit context to ~4000 chars to avoid issues
+    context = context[:4000]
+    print(f"QUERY: {question} | CONTEXT LENGTH: {len(context)} chars")
 
     try:
         response = client.chat.completions.create(
@@ -54,14 +58,11 @@ def ask_knowledge(question: str):
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "Odpowiadaj WYŁĄCZNIE na podstawie kontekstu. "
-                        "Jeśli nie jesteś pewien, napisz: 'Nie ma tego w bazie wiedzy'."
-                    )
+                    "content": "You are a helpful knowledge base assistant. Answer the user's question based on the provided context. Answer in the same language as the question."
                 },
                 {
                     "role": "user",
-                    "content": f"Kontekst:\n{context}\n\nPytanie:\n{question}"
+                    "content": f"Context:\n\n{context}\n\nQuestion: {question}"
                 }
             ]
         )
