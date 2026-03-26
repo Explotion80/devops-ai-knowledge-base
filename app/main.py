@@ -19,6 +19,11 @@ class AskRequest(BaseModel):
 
 app = FastAPI()
 
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -48,8 +53,11 @@ async def upload_pdfs(files: List[UploadFile] = File(...)):
             print(f"PDF {file.filename} length:", len(text))
 
             if text.strip():  # jeśli jest tekst
-                add_to_knowledge(text)
-                added_files.append(file.filename)
+                added = add_to_knowledge(text, source=file.filename)
+                if added:
+                    added_files.append(file.filename)
+                else:
+                    print(f"PDF {file.filename} already in knowledge base")
             else:
                 print(f"PDF {file.filename} zawiera pusty tekst!")
 
