@@ -6,11 +6,7 @@ import os
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-chroma_client = chromadb.Client(
-    settings=chromadb.config.Settings(
-        persist_directory="./chroma"
-    )
-)
+chroma_client = chromadb.PersistentClient(path="./chroma")
 collection = chroma_client.get_or_create_collection(name="knowledge")
 
 # 🔹 dodanie tekstu do bazy
@@ -65,12 +61,15 @@ def ask_knowledge(question: str):
     return response.choices[0].message.content
 
 # 🔹 dzielenie tekstu na chunki
-def chunk_text(text: str, chunk_size=200):
+def chunk_text(text: str, chunk_size=200, overlap=50):
     words = text.split()
     chunks = []
-    for i in range(0, len(words), chunk_size):
+    step = max(chunk_size - overlap, 1)
+    for i in range(0, len(words), step):
         chunk = " ".join(words[i:i + chunk_size])
         chunks.append(chunk)
+        if i + chunk_size >= len(words):
+            break
     return chunks
 
 # 🔹 wczytywanie PDF
