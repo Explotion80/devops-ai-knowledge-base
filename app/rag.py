@@ -1,3 +1,5 @@
+import hashlib
+
 import chromadb
 from openai import OpenAI, APIConnectionError, RateLimitError, APIStatusError
 from pypdf import PdfReader
@@ -9,15 +11,27 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 chroma_client = chromadb.PersistentClient(path="./chroma")
 collection = chroma_client.get_or_create_collection(name="knowledge")
 
+def _text_hash(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
 # 🔹 dodanie tekstu do bazy
-def add_to_knowledge(text: str):
+def add_to_knowledge(text: str, source: str = "manual"):
+    source_id = _text_hash(text)
+    existing = collection.get(where={"source_id": source_id})
+    if existing and existing["ids"]:
+        print(f"SKIP duplicate (source_id={source_id})")
+        return False
+
     chunks = chunk_text(text)
     print("ADDING TO DB:", len(chunks))
     for i, chunk in enumerate(chunks):
         collection.add(
             documents=[chunk],
-            ids=[f"{hash(chunk)}_{i}"]
+            ids=[f"{source_id}_{i}"],
+            metadatas=[{"source": source, "source_id": source_id}]
         )
+    return True
 
 # 🔹 pytanie do bazy + LLM
 def ask_knowledge(question: str):
