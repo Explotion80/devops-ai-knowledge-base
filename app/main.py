@@ -2,8 +2,11 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 from typing import List
+import logging
 import os
 import shutil
+
+logger = logging.getLogger(__name__)
 from app.rag import add_to_knowledge, ask_knowledge, load_pdf
 
 
