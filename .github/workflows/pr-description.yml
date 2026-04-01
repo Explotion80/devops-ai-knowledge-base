@@ -30,28 +30,36 @@ jobs:
       - name: Generate description with AI
         id: ai
         run: |
-          RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
+          PAYLOAD=$(jq -n \
+            --arg diff "$DIFF" \
+            '{
+              model: "gpt-4o-mini",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a PR reviewer. Based on the provided git diff, generate a concise PR description in markdown. Include: ## Summary (2-3 bullet points of what changed and why), ## Changes (list of modified files with brief description of each change). Write in Polish. Keep it short and technical."
+                },
+                {
+                  role: "user",
+                  content: ("Generate a PR description for this diff:\n\n" + $diff)
+                }
+              ],
+              max_tokens: 1000
+            }')
+
+          RESPONSE=$(curl -s --max-time 30 https://api.openai.com/v1/chat/completions \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
-            -d "$(jq -n \
-              --arg diff "$DIFF" \
-              '{
-                model: "gpt-4o-mini",
-                messages: [
-                  {
-                    role: "system",
-                    content: "You are a PR reviewer. Based on the provided git diff, generate a concise PR description in markdown. Include: ## Summary (2-3 bullet points of what changed and why), ## Changes (list of modified files with brief description of each change). Write in Polish. Keep it short and technical."
-                  },
-                  {
-                    role: "user",
-                    content: ("Generate a PR description for this diff:\n\n" + $diff)
-                  }
-                ],
-                max_tokens: 1000
-              }'
-            )")
+            -d "$PAYLOAD")
 
-          DESCRIPTION=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "Nie udalo sie wygenerowac opisu."')
+          echo "API Response status: $(echo "$RESPONSE" | jq -r '.error.message // "OK"')"
+
+          DESCRIPTION=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+          if [ -z "$DESCRIPTION" ]; then
+            echo "AI generation failed, using fallback"
+            DESCRIPTION="Nie udalo sie wygenerowac opisu. Odpowiedz API: $(echo "$RESPONSE" | jq -r '.error.message // "unknown error"')"
+          fi
+
           echo "description<<DESC_EOF" >> "$GITHUB_OUTPUT"
           echo "$DESCRIPTION" >> "$GITHUB_OUTPUT"
           echo "DESC_EOF" >> "$GITHUB_OUTPUT"
@@ -61,14 +69,15 @@ jobs:
 
       - name: Update PR description
         run: |
-          gh pr edit ${{ github.event.pull_request.number }} \
-            --repo ${{ github.repository }} \
-            --body "$(cat <<'EOF'
+          BODY=$(cat <<'BODY_EOF'
           ${{ steps.ai.outputs.description }}
 
           ---
           *Wygenerowano automatycznie przez AI*
-          EOF
-          )"
+          BODY_EOF
+          )
+          gh pr edit ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} \
+            --body "$BODY"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
