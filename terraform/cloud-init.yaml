@@ -1,0 +1,34 @@
+#cloud-config
+
+write_files:
+  - path: /etc/systemd/system/ai-kb.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=AI Knowledge Base
+      After=network-online.target docker.service
+      Wants=network-online.target docker.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory=/opt/ai-kb
+      ExecStartPre=/bin/bash -c 'until docker info; do sleep 2; done'
+      ExecStartPre=/bin/bash -c 'if [ ! -d /opt/ai-kb/.git ]; then git clone https://github.com/Explotion80/devops-ai-knowledge-base.git /opt/ai-kb; fi'
+      ExecStartPre=/bin/bash -c 'cd /opt/ai-kb && git pull origin main'
+      ExecStart=/usr/bin/docker compose -f /opt/ai-kb/docker-compose.yml up -d --build
+      ExecStop=/usr/bin/docker compose -f /opt/ai-kb/docker-compose.yml down
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /opt/ai-kb/.env
+    permissions: "0600"
+    content: |
+      OPENAI_API_KEY=${openai_api_key}
+
+runcmd:
+  - mkdir -p /opt/ai-kb
+  - systemctl daemon-reload
+  - systemctl enable ai-kb.service
+  - systemctl start ai-kb.service
