@@ -17,7 +17,11 @@ class AskRequest(BaseModel):
             raise ValueError("question must not be empty")
         return v.strip()
 
-app = FastAPI()
+app = FastAPI(
+    title="DevOps AI Knowledge Base",
+    description="RAG-based knowledge base API with PDF support",
+    version="1.0.0"
+)
 
 
 @app.get("/health")
