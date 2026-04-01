@@ -2,6 +2,7 @@ import hashlib
 import os
 
 import chromadb
+from chromadb import Documents, EmbeddingFunction, Embeddings
 from dotenv import load_dotenv
 from openai import OpenAI, APIConnectionError, RateLimitError, APIStatusError
 from pypdf import PdfReader
@@ -10,14 +11,28 @@ load_dotenv(override=True)
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
+class OpenAIEmbeddingFunction(EmbeddingFunction):
+    def __call__(self, input: Documents) -> Embeddings:
+        response = client.embeddings.create(
+            model="text-embedding-3-small",
+            input=input
+        )
+        return [item.embedding for item in response.data]
+
+
 chroma_client = chromadb.PersistentClient(path="./chroma")
-collection = chroma_client.get_or_create_collection(name="knowledge")
+embedding_fn = OpenAIEmbeddingFunction()
+collection = chroma_client.get_or_create_collection(
+    name="knowledge_openai",
+    embedding_function=embedding_fn
+)
+
 
 def _text_hash(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()[:16]
 
 
-# 🔹 dodanie tekstu do bazy
 def add_to_knowledge(text: str, source: str = "manual"):
     source_id = _text_hash(text)
     existing = collection.get(where={"source_id": source_id})
@@ -35,11 +50,11 @@ def add_to_knowledge(text: str, source: str = "manual"):
         )
     return True
 
-# 🔹 pytanie do bazy + LLM
+
 def ask_knowledge(question: str):
     results = collection.query(
         query_texts=[question],
-        n_results=3
+        n_results=5
     )
 
     documents = results.get("documents", [])
@@ -48,8 +63,7 @@ def ask_knowledge(question: str):
         return "Brak danych w bazie"
 
     context = "\n\n---\n\n".join(documents[0])
-    # Limit context to ~4000 chars to avoid issues
-    context = context[:4000]
+    context = context[:8000]
     print(f"QUERY: {question} | CONTEXT LENGTH: {len(context)} chars")
 
     try:
@@ -58,7 +72,7 @@ def ask_knowledge(question: str):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful knowledge base assistant. Answer the user's question based on the provided context. Answer in the same language as the question."
+                    "content": "You are a knowledge base assistant. Answer the user's question using the provided context. The context comes from documents uploaded by the user. Synthesize information from the context to give a useful answer, even if the context only partially covers the topic. Only reply 'Nie znaleziono informacji w bazie wiedzy.' if the context has absolutely nothing to do with the question. Answer in the same language as the question."
                 },
                 {
                     "role": "user",
@@ -75,7 +89,7 @@ def ask_knowledge(question: str):
 
     return response.choices[0].message.content
 
-# 🔹 dzielenie tekstu na chunki
+
 def chunk_text(text: str, chunk_size=200, overlap=50):
     words = text.split()
     chunks = []
@@ -87,7 +101,7 @@ def chunk_text(text: str, chunk_size=200, overlap=50):
             break
     return chunks
 
-# 🔹 wczytywanie PDF
+
 def load_pdf(file_path: str) -> str:
     reader = PdfReader(file_path)
     text = ""
