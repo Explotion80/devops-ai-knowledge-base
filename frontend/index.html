@@ -23,7 +23,7 @@
     </div>
 
     <script>
-        const API_URL = "http://localhost:8000";
+        const API_URL = location.port === "3000" ? "http://localhost:8000" : "/api";
         const chatContainer = document.getElementById("chat-container");
         const loader = document.getElementById("loader");
 
