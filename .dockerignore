@@ -1,0 +1,14 @@
+.git
+.env
+.env.example
+terraform/
+chroma/
+chroma_data/
+data/
+*.log
+.vscode/
+.DS_Store
+__pycache__
+.github/
+frontend/
+README.md

@@ -1,0 +1,32 @@
+services:
+  backend:
+    build: .
+    container_name: ai-kb-backend
+    expose:
+      - "8000"
+    volumes:
+      - app-data:/app/data
+      - chroma-data:/app/chroma
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  nginx:
+    image: nginx:alpine
+    container_name: ai-kb-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./app/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend:/usr/share/nginx/html
+    depends_on:
+      - backend
+
+volumes:
+  app-data:
+  chroma-data:
