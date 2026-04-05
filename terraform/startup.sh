@@ -28,4 +28,4 @@ chmod 600 /opt/ai-kb/.env
 
 # Start app
 cd /opt/ai-kb
-docker compose up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
