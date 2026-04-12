@@ -8,13 +8,17 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to GCP VM
-        uses: appleboy/ssh-action@v1
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
         with:
-          host: ${{ secrets.GCP_VM_IP }}
-          username: ${{ secrets.GCP_SSH_USER }}
-          key: ${{ secrets.GCP_SSH_KEY }}
-          script: |
-            cd /opt/ai-kb
-            sudo git pull origin main
-            sudo docker compose -f docker-compose.prod.yml up -d --build
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy via gcloud SSH
+        run: |
+          gcloud compute ssh sam85pl@ai-kb-server \
+            --zone=europe-central2-a \
+            --ssh-flag="-o StrictHostKeyChecking=no" \
+            --command="cd /opt/ai-kb && sudo git pull origin main && sudo docker compose -f docker-compose.prod.yml up -d --build"
