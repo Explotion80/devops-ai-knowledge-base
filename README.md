@@ -132,7 +132,7 @@ Pytanie -> OpenAI Embeddings -> ChromaDB (wyszukiwanie semantyczne, top 5)
 | Reverse proxy | NGINX | Routing /api -> backend, / -> frontend |
 | Konteneryzacja | Docker + Docker Compose | Budowanie i uruchamianie aplikacji |
 | IaC | Terraform | Infrastruktura na GCP jako kod |
-| CI/CD | GitHub Actions | Automatyczny opis PR generowany przez AI |
+| CI/CD | GitHub Actions | Lint (ruff), build Docker, testy (pytest), auto-deploy |
 | Chmura | GCP Compute Engine | VM z Docker w europe-central2 |
 
 ---
@@ -157,12 +157,18 @@ devops-ai-knowledge-base/
 |   |-- cloud-init.yaml      # Alternatywny cloud-init config
 |-- .github/
 |   |-- workflows/
-|       |-- pr-description.yml  # AI-powered PR description
+|       |-- ci.yml               # CI: lint (ruff) + build (docker) + test (pytest)
+|       |-- deploy.yml           # CD: auto-deploy na GCP po merge do main
+|       |-- pr-description.yml   # AI-powered PR description
 |-- data/
 |   |-- uploads/             # Wgrane pliki PDF (gitignore)
 |-- chroma/                  # Baza wektorowa ChromaDB (gitignore)
+|-- tests/
+|   |-- test_api.py          # Testy pytest (health, walidacja, dokumenty)
 |-- Dockerfile               # Obraz Python 3.14-slim + curl
-|-- docker-compose.yml       # Backend + NGINX + healthcheck
+|-- docker-compose.yml       # Backend + NGINX + healthcheck (dev)
+|-- docker-compose.prod.yml  # Konfiguracja produkcyjna (named volumes)
+|-- ruff.toml                # Konfiguracja lintera ruff
 |-- requirements.txt         # Zaleznosci Python
 |-- .env.example             # Szablon zmiennych srodowiskowych
 |-- .env                     # Klucz API (gitignore, nie w repo)
@@ -301,9 +307,55 @@ terraform destroy -var="openai_api_key=dummy"
 
 ## CI/CD
 
-### AI PR Description (GitHub Actions)
+### Pipeline
 
-Workflow `.github/workflows/pr-description.yml` automatycznie generuje opis PR:
+```
+                  +-- Build (docker)
+Push/PR -> Lint --+                  -> Merge -> Deploy (GCP)
+                  +-- Test (pytest)
+```
+
+### CI -- Lint (ruff)
+
+Workflow `.github/workflows/ci.yml` -- job `lint`:
+
+- Sprawdza jakosc kodu za pomoca lintera **ruff**
+- Weryfikuje formatowanie kodu (`ruff format --check`)
+- Reguly: pyflakes, pycodestyle, isort, pyupgrade, bugbear
+- Konfiguracja w `ruff.toml` (line-length: 120, target: Python 3.11)
+
+### CI -- Build (Docker)
+
+Workflow `.github/workflows/ci.yml` -- job `build`:
+
+- Uruchamia sie po przejsciu linta (`needs: lint`)
+- Buduje obraz Docker z tagiem `devops-ai-kb:<commit-sha>`
+- Weryfikuje poprawnosc Dockerfile i requirements.txt
+
+### CI -- Test (pytest)
+
+Workflow `.github/workflows/ci.yml` -- job `test`:
+
+- Uruchamia sie rownolegle z build (oba po lincie)
+- Instaluje zaleznosci + pytest + httpx
+- Testy endpointow: health, walidacja pytania, lista dokumentow
+- Uzywa fałszywego klucza API (testy nie wywoluja OpenAI)
+
+### CD -- Auto-deploy (GCP)
+
+Workflow `.github/workflows/deploy.yml`:
+
+1. Trigger: push do brancha `main`
+2. Loguje sie do GCP przez service account (`google-github-actions/auth`)
+3. Laczy sie z VM przez `gcloud compute ssh` (tunelowanie przez Google)
+4. Wykonuje `git pull` + `docker compose up -d --build`
+
+**Wymagane secrets:**
+- `GCP_SA_KEY` -- klucz JSON service account (rola: Compute Instance Admin + Service Account User)
+
+### AI PR Description
+
+Workflow `.github/workflows/pr-description.yml`:
 
 1. Trigger: otwarcie nowego PR
 2. Pobiera diff zmian
@@ -601,13 +653,14 @@ services:
 - [x] OpenAI Embeddings (`text-embedding-3-small`)
 - [x] CI/CD -- AI-powered PR description (GitHub Actions)
 - [x] Deploy do chmury (GCP Compute Engine + Terraform)
+- [x] CI pipeline -- lint (ruff), build (Docker), testy (pytest)
+- [x] CD auto-deploy -- push do main -> deploy na GCP (gcloud SSH)
+- [x] .dockerignore + docker-compose.prod.yml (bezpieczenstwo produkcyjne)
+- [x] Testy jednostkowe (pytest + httpx)
 - [ ] HTTPS (Let's Encrypt / Cloud Load Balancer)
-- [ ] CI pipeline (lint, testy, build Docker image)
 - [ ] Multi-stage Dockerfile (mniejszy obraz produkcyjny)
 - [ ] Lepszy frontend (React / Next.js)
 - [ ] Usuwanie dokumentow z bazy
 - [ ] Podglad chunkow w bazie wektorowej
 - [ ] Streaming odpowiedzi (SSE/WebSocket)
-- [ ] Testy jednostkowe (pytest)
 - [ ] Logowanie (logging zamiast print)
-- [ ] Auto-deploy z GitHub Actions na GCP
