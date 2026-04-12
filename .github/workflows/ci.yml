@@ -55,4 +55,5 @@ jobs:
       - name: Run tests
         env:
           OPENAI_API_KEY: "test-key"
+          PYTHONPATH: .
         run: pytest tests/ -v
