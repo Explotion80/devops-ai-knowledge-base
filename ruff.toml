@@ -1,0 +1,35 @@
+# Wersja Pythona
+target-version = "py311"
+
+# Maksymalna dlugość linii
+line-length = 120
+
+# Wykluczenia — nie sprawdzaj tych folderow
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "terraform",
+    "chroma",
+    "data",
+]
+
+[lint]
+# Wlaczone reguly:
+# F  — Pyflakes (nieuzywane importy, niezdefiniowane zmienne)
+# E  — pycodestyle errors (bledy skladniowe, PEP 8)
+# W  — pycodestyle warnings (ostrzezenia stylu)
+# I  — isort (kolejnosc importow)
+# UP — pyupgrade (modernizacja skladni Python)
+# B  — flake8-bugbear (potencjalne bugi)
+select = ["F", "E", "W", "I", "UP", "B"]
+
+# Ignorowane reguly:
+# E501 — za dluga linia (pilnuje tego line-length + formatter)
+# T201 — print() (uzywamy print zamiast logging — na razie OK)
+ignore = ["E501"]
+
+[format]
+# Styl formatowania — double quotes, trailing comma
+quote-style = "double"
+indent-style = "space"

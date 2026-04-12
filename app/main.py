@@ -1,13 +1,14 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, field_validator
-from typing import List
 import logging
 import os
 import shutil
 
-logger = logging.getLogger(__name__)
+from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, field_validator
+
 from app.rag import add_to_knowledge, ask_knowledge, load_pdf
+
+logger = logging.getLogger(__name__)
 
 
 class AskRequest(BaseModel):
@@ -20,16 +21,16 @@ class AskRequest(BaseModel):
             raise ValueError("question must not be empty")
         return v.strip()
 
+
 app = FastAPI(
-    title="DevOps AI Knowledge Base",
-    description="RAG-based knowledge base API with PDF support",
-    version="1.0.0"
+    title="DevOps AI Knowledge Base", description="RAG-based knowledge base API with PDF support", version="1.0.0"
 )
 
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
 
 # CORS
 app.add_middleware(
@@ -43,9 +44,10 @@ app.add_middleware(
 UPLOAD_DIR = "data/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+
 # UPLOAD PDF
 @app.post("/upload_pdfs")
-async def upload_pdfs(files: List[UploadFile] = File(...)):
+async def upload_pdfs(files: list[UploadFile]):
     added_files = []
 
     for file in files:
@@ -71,10 +73,8 @@ async def upload_pdfs(files: List[UploadFile] = File(...)):
         except Exception as e:
             return {"error": str(e)}
 
-    return {
-        "added": added_files,
-        "count": len(added_files)
-    }
+    return {"added": added_files, "count": len(added_files)}
+
 
 # 🔹 LISTA PLIKÓW
 @app.get("/documents")
@@ -85,10 +85,11 @@ def list_documents():
     except Exception as e:
         return {"error": str(e)}
 
+
 @app.post("/ask")
 def ask_question(data: AskRequest):
     try:
         answer = ask_knowledge(data.question)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"AI service error: {e}")
+        raise HTTPException(status_code=502, detail=f"AI service error: {e}") from e
     return {"answer": answer}
