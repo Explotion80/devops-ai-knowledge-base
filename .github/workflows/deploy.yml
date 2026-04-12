@@ -1,0 +1,20 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GCP VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.GCP_VM_IP }}
+          username: ${{ secrets.GCP_SSH_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          script: |
+            cd /opt/ai-kb
+            sudo git pull origin main
+            sudo docker compose -f docker-compose.prod.yml up -d --build
